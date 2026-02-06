@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: transaction-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - transaction-network
+
+  mongodb:
+    image: mongo:7
+    container_name: transaction-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=transactions
+    volumes:
+      - mongodb_data:/data/db
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - transaction-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: transaction-app
+    ports:
+      - "8000:8000"
+    environment:
+      - RedisHost=redis
+      - RedisPort=6379
+      - RedisTransactionQueueKeyName=TransactionQueue
+      - CsvFilePath=/app/data/transactions_1_month.csv
+      - MongoDbUri=mongodb://mongodb:27017/
+      - GracefulShutDownTimeout=10
+      - ForceShutDownTimeout=2
+      - TransactionCkeckTimeout=0.5
+      - CutOffSeconds=0  
+      - CutOffMinutes=0
+      - CutOffDays=7
+      - DumperTaskScheduleInterval=10
+    volumes:
+      - ./transactions_1_month.csv:/app/data/transactions_1_month.csv:ro
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    networks:
+      - transaction-network
+    restart: unless-stopped
+
+networks:
+  transaction-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
