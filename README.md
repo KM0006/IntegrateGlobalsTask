@@ -185,7 +185,7 @@ Every 10s:
 ### 5. **AppBuilder** (Lifecycle Manager)
 **File**: `AppBuilder/AppBuilder.py`
 
-**Responsibility**: Orchestrate application startup and shutdown
+**Responsibility**: Orchestrate application startup and shutdown, implements builder design pattern.
 
 **Startup Sequence**:
 1. Initialize Redis connection
@@ -504,7 +504,9 @@ curl "http://localhost:8000/stats?from_date=2026-01-01&to_date=2026-01-07"
 Dates 2026-01-01 to 2026-01-12:  ← MongoDB (historical)
 Dates 2026-01-13 to 2026-01-31:  ← Redis (hot data)
 ```
-
+**Important Notes**:
+1. The days in the Api response are sorted by datasource (1- Redis, 2-mongoDb) not by date, intended for testing purposes.
+2. In a real production environment, in the case of a redis failure or crash, the Stats service must try seeking data from mongo db for all the requested date range, but this is not implemented in the current stats service. Intended for testing purposes.
 ---
 
 ## Configuration
